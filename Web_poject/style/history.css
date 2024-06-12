@@ -1,0 +1,88 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding-top: 0;
+}
+#top {
+    background-color: #007bff; 
+    color: #fff; 
+    width: 100%; 
+    height: 25px; 
+    padding: 10px; 
+    position: fixed; 
+    top: 0; 
+    justify-content: space-between; /* Розміщення елементів зліва та справа */
+    align-items: center; /* Вертикальне центрування елементів */
+    display: flex;
+}
+#taskList{
+    margin-left: 20px;
+    
+    width: 80%;
+    
+}
+.task{display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+    background-color: rgba(151, 165, 163, 0.329);
+}
+h2{
+    
+    margin-top: 50px;
+    margin-left: 20px;
+    color: #333;
+}
+
+button.delete-button,
+button.download-button {
+    background-color: #007bff;
+    color: #ffffff;
+    padding: 10px 10px;
+    align-items: center;
+    margin-left: 20px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    margin: 0px 0  0;
+    transition: background-color 0.3s;
+    
+}
+
+
+button.delete-button:hover,
+button.download-button:hover {
+    background-color: #0056b3;
+}
+
+button:disabled {
+    background-color: #ccc; 
+    color: #666; 
+    cursor: not-allowed; 
+    
+}
+
+a {
+    text-decoration: none;
+    color: #fff;
+    margin-right: 20px; 
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+#message {
+    position: fixed;
+    
+    top: 50px;
+    right: 10px;
+    background-color: #fff;
+    color: #007bff;
+    padding: 10px;
+    border-radius: 3px;
+    border: 1px solid #007bff;
+    display: none;
+}

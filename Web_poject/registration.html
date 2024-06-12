@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Форма реєстрації</title>
+    <link rel="stylesheet" type="text/css" href="registration.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    
+</head>
+<body>
+    <div id="message"></div>
+    <h2>Реєстрація</h2>
+    <form id="registrationForm">
+        <label for="username">Ім'я користувача:</label>
+        <input type="text" id="username" name="username" required><br><br>
+        
+        <label for="password">Пароль:</label>
+        <div class="password-input-container">
+            <input type="password" id="password" name="password" required>
+            <button type="button" id="showPassword" onclick="togglePasswordVisibility('password')" aria-label="Показати пароль"><i class="fas fa-eye"></i></button>
+        </div>
+        
+        <label for="confirmPassword">Підтвердити пароль:</label>
+        <div class="confirmpassword-input-container">
+            <input type="password" id="confirmPassword" name="confirmPassword" required>
+            <button type="button" id="showConfirmPassword" onclick="togglePasswordVisibility('confirmPassword')" aria-label="Показати пароль"><i class="fas fa-eye"></i></button>
+        </div>
+        
+        <button type="button" class="register" onclick="register()">Зареєструватись</button>
+    </form>
+
+    <p>Вже маєте обліковий запис? <a href="/login">Увійти</a></p>
+
+    <script>
+        const messageDiv = document.getElementById("message");
+        function togglePasswordVisibility(inputId) {
+            const showPasswordButton = document.getElementById(inputId === "password" ? "showPassword" : "showConfirmPassword");
+            const passwordInput = document.getElementById(inputId);
+            
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                showPasswordButton.querySelector('i').classList.remove('fa-eye');
+                showPasswordButton.querySelector('i').classList.add('fa-eye-slash');
+                showPasswordButton.setAttribute("aria-label", "Приховати пароль");
+            } else {
+                passwordInput.type = "password";
+                showPasswordButton.querySelector('i').classList.remove('fa-eye-slash');
+                showPasswordButton.querySelector('i').classList.add('fa-eye');
+                showPasswordButton.setAttribute("aria-label", "Показати пароль");
+            }
+        }
+
+        function validateInput(){
+            const usernameInput = document.getElementById("username");
+            const passwordInput = document.getElementById("password");
+            const confirmPasswordInput = document.getElementById("confirmPassword");
+
+            if (usernameInput.value.trim() === ""||passwordInput.value.trim() === ""||confirmPasswordInput.value.trim() === "") {
+                showMessage("Усі поля обов'язкові!");
+                return false;
+            }
+            return true;
+        }
+        function validateForm() {
+            const passwordInput = document.getElementById("password");
+            const confirmPasswordInput = document.getElementById("confirmPassword");
+
+            if (passwordInput.value !== confirmPasswordInput.value) {
+                showMessage("Паролі не збігаються!");
+                return false;
+            }
+
+            return true;
+        }
+
+        function register() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+
+            if ((validateForm()=== true )&&(validateInput()=== true)) {
+                
+                
+                    fetch('/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ username, password }),
+                    })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage("Успішна реєстрація");
+                        // Опціонально: перенаправлення на іншу сторінку після успішної реєстрації
+                        // window.location.href = '/login';
+                    } else {
+                        showMessage(`${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    showMessage(`Помилка: ${error.message}`);
+                });
+            }
+        }
+
+        function showMessage(message) {
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        };
+
+        
+    </script>
+</body>
+</html>

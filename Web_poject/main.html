@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Головна сторінка</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+    <div id="top">
+        <div id="username"></div>
+        <div id ="link">
+            <a href="/history">History</a>
+            <a id="logout-link" href="/login">Log out</a>
+        </div>
+
+    </div>
+    <div id="message"></div>
+    <h3>Оберіть два файли:
+        <ul>
+            <li>заповнені числовими матрицями</li> 
+            <li>елементи якої записані через кому</li> 
+            <li>у форматі txt</li>
+            <li>макимальний розмір матриць 200*200</li></ul></h3>
+    <div id="inputs">
+        <input type="file" class="file" id="file1" accept=".txt" required><br><br>
+        <input type="file" id="file2" class="file" accept=".txt" required><br><br>
+
+        <button id="multiplyButton" class="multiplyButton"disabled>Помножити матриці</button><br><br>
+
+        <div id="tasksСontainer"></div>
+    </div>
+    <script>
+        const logoutLink = document.getElementById('logout-link');
+        const messageDiv = document.getElementById("message");
+        const tok = localStorage.getItem('tok');
+        //console.log(tok);
+        fetch('/tok', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({token:tok})
+        }).then(response => response.json())  
+        .then(data => {
+                //const usernamels = data.username;
+                if (data && data.error) {
+                    
+                    localStorage.clear();
+                    showMessage(data.error);
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 5000);
+                    
+                }
+                else{
+                 
+                 const username = data.username
+                 const usernameDiv = document.getElementById('username');
+                 usernameDiv.textContent = data.username;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+            });
+        
+        const activeTasks = new Map();
+        const startPointId = new Date('2023-11-05T20:22:00.000Z')
+        const file1Input = document.getElementById('file1');
+        const file2Input = document.getElementById('file2');
+        const multiplyButton = document.getElementById('multiplyButton');
+        const options = {
+            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', 
+            minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short'
+        };
+        
+        function addActiveTask(taskId, username) {
+            activeTasks.set(`${taskId}-${username}`);
+        }
+
+        
+        function removeActiveTask(taskId, username) {
+            activeTasks.delete(`${taskId}-${username}`);
+        }
+        function readFileSync(file) {
+                    return new Promise((resolve) => {
+                const reader = new FileReader();
+
+                reader.onload = function (event) {
+                    const matrix = event.target.result;
+                    
+                    resolve(matrix);
+                };
+
+                reader.readAsText(file);
+            });
+        }
+
+        async function areMatricesEqual() {
+            
+            const file1 = file1Input.files[0]
+            const file2 = file2Input.files[0]
+            
+            let matrix1 ="пусто"//= rows1.map(row => row.split(',').map(Number));
+            let matrix2 ="пусто"//= rows2.map(row => row.split(',').map(Number));
+            matrix1 = await readFileSync(file1);
+            matrix2 = await readFileSync(file2);
+            
+            
+            const validMatrixRegex = /^[0-9,]+(\n[0-9,]+)*$/;
+            
+            // Перевірка на валідність символів у матрицях
+            if (!validMatrixRegex.test(matrix1) || !validMatrixRegex.test(matrix2)) {
+                showMessage("невалідні символи")
+                file1Input.value = '';
+                file2Input.value = '';
+                return false;
+            }
+
+            const rows1 = matrix1.split('\n');
+            const rows2 = matrix2.split('\n');
+            const cols1 = rows1[0].split(',');
+            const cols2 = rows2[0].split(',');
+            // Перевірка на квадратність матриці та рівність
+            
+            if (rows1.length !== cols1.length || rows2.length !== cols2.length || cols1.length !== cols2.length || rows1.length !== rows2.length) {
+                showMessage("різна кількість рядків")
+                file1Input.value = '';
+                file2Input.value = '';
+                return false;
+            }
+            // Перевірка на максимальну кількість рядків
+            if (rows1.length>200){
+                showMessage("рядків більше 200")
+                file1Input.value = '';
+                file2Input.value = '';
+                return false;
+            }
+            
+            // Перевірка на максимальну кількість активних тасків
+            // console.log("activeTasks.size",activeTasks.size)    
+            if (activeTasks.size > 5)
+            {
+                showMessage("більше 4 активних тасків")
+                file1Input.value = '';
+                file2Input.value = '';
+                return false;
+            }
+            // Всі перевірки пройдені, матриці рівні
+            return true;
+        }
+
+        // Функція, яка визначає, чи обрані файли і активує кнопку
+        async function checkFiles() {
+            
+             if ((await(file1Input.files.length > 0 && file2Input.files.length > 0 && areMatricesEqual())===true)){
+                
+                multiplyButton.removeAttribute('disabled');
+            }else{
+                //multiplyButton.setAttribute('disabled', 'disabled');
+                
+            }
+        }
+
+        // Вішаємо обробник події на обрання файлів
+        file1Input.addEventListener('change', checkFiles);
+        file2Input.addEventListener('change', checkFiles);
+
+        
+        multiplyButton.addEventListener('click', function () {
+            
+            const username = document.getElementById('username').textContent;
+            const file1 = file1Input.files[0];
+            const file2 = file2Input.files[0];
+            
+            const date = new Date();
+            const taskId = Math.floor((date-startPointId) / 1000);
+            const formattedDate = new Intl.DateTimeFormat('en', options).format(date);
+            const formData = new FormData();
+            formData.append('file1', file1);
+            formData.append('file2', file2);
+            formData.append('username', username);
+            formData.append('date', date.toISOString());
+            formData.append('taskId', taskId);
+            formData.append('token', tok);
+            // Відправляємо файли на сервер за допомогою AJAX або Fetch
+            async function multiplyMatrices() {
+                await fetch('/multiply-matrices', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    
+                    if ((data.error && data.error ==='Invalid token! Relogin')) {
+                    
+                    localStorage.clear();
+                    showMessage(data.error);
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 5000);
+                    }if ((data && data.message ==='Проводяться технічні роботи, спробуйте пізніше')) {
+                        
+                        showMessage(data.message);
+                        setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 5000);
+                    }else{
+                    //showMessage(date);
+                    //appmultiplyMatrices();
+                    addActiveTask(taskId, username);
+                    addTaskToPage(taskId, formattedDate);
+                    }
+                })
+                .catch(error => {
+                    console.error('Помилка відправлення на сервер:', error);
+                });
+            }
+
+            // // Відправляємо файли на сервер за допомогою AJAX або Fetch
+            // async function appmultiplyMatrices() {
+            //     await fetch('/app-multiply-matrices', {
+            //         method: 'POST',
+            //         body: formData
+            //     })
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         //console.log('Результат множення матриць:', data);
+                    
+            //     })
+            //     .catch(error => {
+            //         console.error('Помилка відправлення на сервер:', error);
+            //     });
+            // }
+
+            multiplyMatrices();
+            //appmultiplyMatrices();
+            
+            // addActiveTask(taskId, username);
+            multiplyButton.setAttribute('disabled', 'disabled');// для показу закоментити
+            file1Input.value = '';// для показу закоментити
+            file2Input.value = '';// для показу закоментити
+            checkFiles();
+        });
+
+        function createTaskElement(taskId, date) {
+            const taskElement = document.createElement('div');
+            taskElement.id = `task-${taskId}`;
+            taskElement.innerHTML = `ID: ${taskId}    Date:${date} 
+                <button class="cancel-button" data-task-id="${taskId}">Скасувати</button>
+                <button class="delete-button" data-task-id="${taskId}">Видалити зі списку</button>
+                <button disabled class="download-button" data-task-id="${taskId}">Завантажити результат</button>
+                <br><progress id="p-${taskId}" value="0" max="100" ></progress></br>`;
+            return taskElement;
+        }
+
+        function addTaskToPage(taskId, date) {
+            const tasksContainer = document.getElementById('tasksСontainer');
+            const taskElement = createTaskElement(taskId, date);
+            const firstChild = tasksContainer.firstChild;
+            if (firstChild) {
+                    tasksContainer.insertBefore(taskElement, firstChild);
+                } else {
+                    // Якщо контейнер пустий, просто додаємо новий елемент
+                    tasksContainer.appendChild(taskElement);
+                }
+        }
+        
+        function handleDeleteTask(event) {
+            const taskId = event.target.getAttribute('data-task-id');
+            const taskElement = document.getElementById(`task-${taskId}`);
+            if (taskElement) {
+                taskElement.remove();
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('delete-button')) {
+                handleDeleteTask(event);
+            }else if(event.target.classList.contains('cancel-button')) {
+            const taskId = event.target.getAttribute('data-task-id');
+            const username = document.getElementById('username').textContent;
+            
+            const canceldata = new FormData();
+            canceldata.append('username', username);
+            canceldata.append('taskId', taskId);
+            canceldata.append('token', tok);
+            // Відправляємо запит на сервер для зміни поля topicality на 'Сancel'
+            fetch('/cancel-task', {
+                method: 'POST',
+                body: canceldata
+            })
+            .then(response => response.json())
+            .then(data => {
+                if ((data.error && data.error==='Invalid token! Relogin')) {
+                    
+                    localStorage.clear();
+                    showMessage(data.error);
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 5000);
+                }else{
+                showMessage(data.message);
+                }
+                })
+            .catch(error => {
+                console.error('Помилка при скасуванні завдання:', error);
+            });
+            event.target.setAttribute('disabled','disable');
+            removeActiveTask(taskId, username);
+        }else  if (event.target.classList.contains('download-button')) {
+        
+       
+            const taskId = event.target.getAttribute('data-task-id');
+            const username = document.getElementById('username').textContent;
+            const postdata = new FormData();
+            postdata.append('username', username);
+            postdata.append('taskId', taskId);
+            postdata.append('token', tok);
+            fetch('/get-task-result', {
+                 method: 'POST',
+                 body: postdata
+             })
+             .then(response => response.json())
+             .then(data => {
+                if ((data.error && data.error==='Invalid token! Relogin')) {
+                    
+                    localStorage.clear();
+                    showMessage(data.error);
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 5000);
+                }else{
+                const blob = new Blob([data.result], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'resultmatrix'+taskId+'.txt';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                }
+            })
+                
+            .catch(error => {
+                console.error('Помилка при скасуванні завдання:', error);
+            });
+            };
+
+        });
+
+        async function updateActiveTasksProgress() {
+            await activeTasks.forEach(async function(taskInfo, key) {
+                const [taskId, username] = key.split('-'); // Розбиваємо ключ на taskId та username
+                progress = await updateTaskProgress(taskId, username);
+                const cancelButton = document.querySelector(`.cancel-button[data-task-id="${taskId}"]`);
+                const disabledButton = document.querySelector(`.download-button[data-task-id="${taskId}"]`);
+                
+                if (progress === 100) {
+                    removeActiveTask(taskId, username);
+                    cancelButton.setAttribute('disabled', 'disabled');
+                    disabledButton.removeAttribute('disabled');
+                    
+                }
+                const progressBar = document.getElementById(`p-${taskId}`);
+                
+                progressBar.value = progress;
+            });
+        }
+
+        function updateTaskProgress(taskId, username) {
+            const postdata = new FormData();
+            postdata.append('username', username);
+            postdata.append('taskId', taskId);
+            postdata.append('token', tok);
+            return fetch('/task-progress', {
+                 method: 'POST',
+                 body: postdata
+             })
+             .then(response => response.json())
+             .then(data => {
+            // Отримано дані про прогрес з сервера
+            //progressData = data.progress;
+            if ((data.error && data.error==='Invalid token! Relogin')) {
+                    
+                    localStorage.clear();
+                    showMessage(data.error);
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 5000);
+                    }else{
+                      return data.progress
+                    }
+                
+                }).catch(error => {
+                console.error('Помилка при скасуванні завдання:', error);
+                //return -1;
+            });
+            //console.log("вихід з поста",progressData);
+            //return progressData
+        };
+        
+
+        setInterval(function() {
+        // Оновлення прогрес для всіх активних тасків
+        updateActiveTasksProgress();
+        
+        }, 1000); // Наприклад, кожну секунду
+        
+        function showMessage(message) {
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        logoutLink.addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/login';
+        });
+    </script>
+</body>
+</html>
+

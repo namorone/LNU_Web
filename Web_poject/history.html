@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Історія завдань</title>
+    <link rel="stylesheet" type="text/css" href="history.css">
+</head>
+<body>
+    <div id ="top">
+        <div id="Username"></div>
+        <div>
+        <a href="/main">Main</a>
+        <a id="logout-link" href="/login">Log out</a>
+        </div>
+    </div>
+    <div id="message"></div>
+    <h2>Історія завдань</h2>
+    <div id="taskList"></div>
+
+    <script>
+        const logoutLink = document.getElementById('logout-link');
+        const messageDiv = document.getElementById("message");
+        const tok = localStorage.getItem('tok');
+        let username 
+        
+        //console.log(tok);
+        fetch('/tok', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({token:tok})
+        }).then(response => response.json())  
+        .then(data => {
+                //const usernamels = data.username;
+                if (data && data.error) {
+                    
+                    localStorage.clear();
+                    showMessage(data.error);
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 5000);
+                    
+                }
+                else{
+                 
+                 //console.log(data);
+                 username = data.username;
+                 const usernameDiv = document.getElementById('Username');
+                 usernameDiv.textContent = data.username;
+                 getTasks(username);
+                 
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+            });
+            //console.log(username);
+        async function getTasks(username) {
+                
+            fetch('/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: username, token:tok })
+            })
+            .then(response => response.json())
+            .then(tasks => {
+                const taskList = document.getElementById('taskList');
+                //console.log(tasks);
+                tasks.forEach(task => {
+                    const date = new Date(task.date);
+
+                    const year = date.getUTCFullYear();
+                    const month = date.getUTCMonth() + 1; // Місяці починаються з 0, тому додаємо 1
+                    const day = date.getUTCDate();
+                    const hours = date.getUTCHours();
+                    const minutes = date.getUTCMinutes();
+                    const dateStr = `${year}-${month}-${day} ${hours}:${minutes}`;
+                    let status;
+                    if ((task.topicalitiy === 'Cancel')){
+                        status = `Status:${task.topicality}`
+                    } else if ((task.topicalitiy === 'Actual')){
+                        status = `Status: Eror`
+                    }else { status =`Status:${task.topicality}`}
+                    let download_button;
+                    if (task.percentege_of_compile === 0){
+                        download_button = `<button disabled class="download-button" data-task-id="${task.taskId}">Завантажити результат</button>`
+                    } else if (task.percentege_of_compile >= 1){
+                        download_button = `<button class="download-button" data-task-id="${task.taskId}">Завантажити результат</button>`
+                    }
+                    const space="     "
+                    const taskElement = document.createElement('div');
+                    taskElement.classList.add('task');
+                    taskElement.id = `task-${task.taskId}`;
+                    taskElement.innerHTML = `ID: ${task.taskId}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   Date:${dateStr}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   
+                    ${status}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  Progress:${task.percentege_of_compile}% 
+                        <div id="buttons">
+                        <button class="delete-button" data-task-id="${task.taskId}">Видалити</button>
+                        ${download_button}
+                        </div>`;
+                    
+                    taskList.appendChild(taskElement);
+                });
+            })
+            .catch(error => {
+                console.error('Помилка отримання завдань:', error);
+            });
+        
+            }
+        
+        function handleDeleteTask(event) {
+            const taskId = event.target.getAttribute('data-task-id');
+            const taskElement = document.getElementById(`task-${taskId}`);
+            console.log("gthtl if");
+            if (taskElement) {
+                console.log(`Видаляємо завдання ${taskId}`);
+                taskElement.remove();
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('delete-button')) {
+                const taskId = event.target.getAttribute('data-task-id');
+                fetch('/delete_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username:username, taskId:taskId, token:tok })
+            })
+            .then(response => response.json())  // або response.text(), в залежності від формату відповіді
+            .then(data => {
+                if (data && data.error) {
+                    
+                    localStorage.clear();
+                    showMessage(data.error);
+                    setTimeout(() => {
+                        window.location.href = data.redirectUrl;
+                    }, 5000);
+                    
+                }
+                else{
+                 
+                 showMessage(data.message);
+                 handleDeleteTask(event);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+            }else if (event.target.classList.contains('download-button')) {
+            
+            const taskId = event.target.getAttribute('data-task-id');
+            //const username = document.getElementById('username').textContent;
+            const postdata = new FormData();
+            postdata.append('username', username);
+            postdata.append('taskId', taskId);
+            postdata.append('token', tok);
+            fetch('/get-task-result', {
+                 method: 'POST',
+                 body: postdata
+             })
+             .then(response => response.json())
+             .then(data => {
+                
+                const blob = new Blob([data.result], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'resultmatrix'+taskId+'.txt';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                })
+            .catch(error => {
+                console.error('Помилка при скасуванні завдання:', error);
+            });
+            }
+        });
+
+        function showMessage(message) {
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        logoutLink.addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/login';
+        });
+    </script>
+</body>
+</html>

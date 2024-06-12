@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Форма логування</title>
+    <link rel="stylesheet" type="text/css" href="login.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+
+
+</head>
+<body>
+    <div id="message"></div>
+    <h2>Логування</h2>
+    <form id="loginForm">
+        <label for="username">Ім'я користувача:</label>
+        <input type="text" id="username" name="username" required><br><br>
+
+        <label for="password">Пароль:</label>
+        <div class="password-input-container">
+            <input type="password" id="password" name="password" required>
+            <button type="button" id="showPassword" aria-label="Показати пароль"><i class="fas fa-eye"></i></button>
+        </div>
+        
+        <button type="button" class= "login" onclick="login()">Увійти</button>
+    </form>
+
+    <p>Не маєте облікового запису? <a href="/registration">Зареєструйтесь</a></p>
+
+    <script>
+        const passwordInput = document.getElementById("password");
+        const showPasswordButton = document.getElementById("showPassword");
+        const messageDiv = document.getElementById("message");
+
+        showPasswordButton.addEventListener("click", () => {
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                showPasswordButton.querySelector('i').classList.remove('fa-eye');
+                showPasswordButton.querySelector('i').classList.add('fa-eye-slash');
+                showPasswordButton.setAttribute("aria-label", "Приховати пароль");
+            } else {
+                passwordInput.type = "password";
+                showPasswordButton.querySelector('i').classList.remove('fa-eye-slash');
+                showPasswordButton.querySelector('i').classList.add('fa-eye');
+                showPasswordButton.setAttribute("aria-label", "Показати пароль");
+            }
+        });
+        function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            console.log(username, password)
+
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            })
+            .then(response => response.json())  // або response.text(), в залежності від формату відповіді
+            .then(data => {
+                 console.log(data);
+                // localStorage.setItem('username', username);
+                // window.location.href = '/main';
+                if (data.success) {
+                    console.log('Успішний вхід');
+                    //localStorage.setItem('username', username);
+                    localStorage.setItem('tok', data.token);
+                    window.location.href = data.redirectUrl;
+                } else {
+                    console.error('Помилка:', data.error);
+                    showMessage(data.error.toString());
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function showMessage(message) {
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+    </script>
+</body>
+</html>
